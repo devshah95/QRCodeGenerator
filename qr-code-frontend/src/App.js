@@ -1,25 +1,40 @@
-import logo from './logo.svg';
-import './App.css';
+import React, { useState } from "react"
+import axios from "axios"
+import "./styles.css" // Import the CSS file
 
 function App() {
+  const [input, setInput] = useState("")
+  const [qrCode, setQrCode] = useState(null)
+
+  const generateQrCode = () => {
+    axios
+      .post(
+        "http://localhost:8000/generate_qr/",
+        { data: input },
+        { responseType: "blob" }
+      )
+      .then((response) => {
+        const url = URL.createObjectURL(response.data)
+        setQrCode(url)
+      })
+      .catch((error) => {
+        console.error("Error generating QR code:", error)
+      })
+  }
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div className="container">
+      <h1>QR Code Generator</h1>
+      <input
+        type="text"
+        value={input}
+        placeholder="Enter URL or text"
+        onChange={(e) => setInput(e.target.value)}
+      />
+      <button onClick={generateQrCode}>Generate QR Code</button>
+      {qrCode && <img src={qrCode} alt="QR Code" />}
     </div>
-  );
+  )
 }
 
-export default App;
+export default App
