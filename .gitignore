@@ -5,3 +5,5 @@ node_modules/
 *.log
 __pycache__
 terraform/variables.tfvars
+terraform/.terraform.lock.hcl
+terraform/.terraform**
