@@ -9,7 +9,7 @@ function App() {
   const generateQrCode = () => {
     axios
       .post(
-        "http://localhost:8000/generate_qr/",
+        "http://qr-code-backend:8000/generate_qr/", // Use the backend container name
         { data: input },
         { responseType: "blob" }
       )
