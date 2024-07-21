@@ -1,0 +1,41 @@
+# Node modules directory
+node_modules
+
+# Logs
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Dependency directories
+.bower_components
+
+# Optional npm cache directory
+.npm
+
+# Build output directory
+build
+
+# Environment variables file
+.env
+
+# MacOS system files
+.DS_Store
+
+# Git directory
+.git
+
+# Temporary files
+tmp
+temp
+
+# Coverage directory used by tools like istanbul
+coverage
+
+# IDEs and editors
+.idea
+.vscode
+*.sublime*
+
+# Other unwanted files
+*.log
+*.swp

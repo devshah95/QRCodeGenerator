@@ -1,0 +1,51 @@
+# Python caches and logs
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+python3.*
+*.log
+
+# Environment variables file
+.env
+
+# MacOS system files
+.DS_Store
+
+# Git directory
+.git
+
+# IDEs and editors
+.idea
+.vscode
+*.sublime*
+
+# Virtual environments
+.venv
+venv/
+env/
+env.bak/
+env.bak/
+
+# Coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+
+# Test results
+.pytest_cache/
+junitxml/
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json

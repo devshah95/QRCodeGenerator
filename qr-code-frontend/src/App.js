@@ -1,6 +1,6 @@
 import React, { useState } from "react"
 import axios from "axios"
-import "./styles.css" // Import the CSS file
+import "./styles.css"
 
 function App() {
   const [input, setInput] = useState("")
@@ -9,7 +9,7 @@ function App() {
   const generateQrCode = () => {
     axios
       .post(
-        "http://qr-code-backend:8000/generate_qr/", // Use the backend container name
+        "http://localhost:8000/generate_qr/",
         { data: input },
         { responseType: "blob" }
       )

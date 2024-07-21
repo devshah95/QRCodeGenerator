@@ -2,9 +2,8 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import qrcode
 from io import BytesIO
-from fastapi.responses import StreamingResponse, FileResponse
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
-import os
 
 app = FastAPI()
 
@@ -22,12 +21,12 @@ class QRRequest(BaseModel):
 @app.post("/generate_qr/")
 def generate_qr(request: QRRequest):
     qr = qrcode.make(request.data)
+    buf = BytesIO()
+    qr.save(buf, format="PNG")
+    buf.seek(0)
     
-    file_path = f"{request.data}.png"
-    qr.save(file_path)
-
-    return FileResponse(file_path, media_type="image/png", filename=file_path)
+    return StreamingResponse(buf, media_type="image/png")
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="localhost", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
