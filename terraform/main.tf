@@ -78,23 +78,48 @@ resource "aws_security_group" "frontend_sg" {
 }
 
 resource "aws_security_group_rule" "frontend_to_backend" {
-  type                     = "egress"
-  from_port                = 8000
-  to_port                  = 8000
-  protocol                 = "tcp"
-  security_group_id        = aws_security_group.frontend_sg.id
+  type = "egress"
+  from_port = 8000
+  to_port = 8000
+  protocol = "tcp"
+  security_group_id = aws_security_group.frontend_sg.id
   source_security_group_id = aws_security_group.backend_sg.id
 
   depends_on = [aws_security_group.backend_sg]
 }
 
 resource "aws_security_group_rule" "backend_from_frontend" {
-  type                     = "ingress"
-  from_port                = 8000
-  to_port                  = 8000
-  protocol                 = "tcp"
-  security_group_id        = aws_security_group.backend_sg.id
+  type = "ingress"
+  from_port = 8000
+  to_port = 8000
+  protocol = "tcp"
+  security_group_id = aws_security_group.backend_sg.id
   source_security_group_id = aws_security_group.frontend_sg.id
 
   depends_on = [aws_security_group.frontend_sg]
+}
+
+resource "aws_alb" "main_alb" {
+  name = "my-alb"
+  load_balancer_type = "application"
+  security_groups = [aws_security_group.frontend_sg.id]
+  subnets = [aws_subnet.public.id]
+}
+
+resource "aws_alb_target_group" "frontend" {
+  name = "frontend-targets"
+  port = 3000
+  protocol = "HTTP"
+  vpc_id = aws_vpc.main.id
+}
+
+resource "aws_alb_listener" "frontend" {
+  load_balancer_arn = aws_alb.main_alb.arn
+  port = 80
+  protocol = "HTTP"
+
+  default_action {
+    type = "forward"
+    target_group_arn = aws_alb_target_group.frontend.arn
+  }
 }
