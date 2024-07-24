@@ -10,9 +10,9 @@ resource "aws_vpc" "main" {
 }
 
 resource "aws_subnet" "public" {
-  vpc_id = aws_vpc.main.id 
-  cidr_block = "10.0.0.0/24"
-  availability_zone = var.availability_zone
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.0.0/24"
+  availability_zone       = var.availability_zone
   map_public_ip_on_launch = true
 }
 
@@ -21,7 +21,7 @@ resource "aws_internet_gateway" "gw" {
 }
 
 resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.main.id 
+  vpc_id = aws_vpc.main.id
 
   route {
     cidr_block = "0.0.0.0/0"
@@ -30,29 +30,27 @@ resource "aws_route_table" "public" {
 }
 
 resource "aws_route_table_association" "route_association" {
-  subnet_id = aws_subnet.public.id 
+  subnet_id      = aws_subnet.public.id
   route_table_id = aws_route_table.public.id
 }
-
 
 resource "aws_security_group" "backend_sg" {
   vpc_id = aws_vpc.main.id
 
   ingress {
-    from_port = 8000
-    to_port = 8000
-    protocol = "tcp"
-    security_groups = [aws_security_group.frontend_sg.id]
+    from_port   = 8000
+    to_port     = 8000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]  # Temporarily allow from anywhere
   }
 
   egress {
-    from_port = 0
-    to_port = 0 
-    protocol = "-1"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 }
-
 
 resource "aws_security_group" "frontend_sg" {
   vpc_id = aws_vpc.main.id
@@ -65,23 +63,38 @@ resource "aws_security_group" "frontend_sg" {
   }
 
   egress {
-    from_port   = 8000
-    to_port     = 8000
+    from_port   = 80
+    to_port     = 80
     protocol    = "tcp"
-    security_groups = [aws_security_group.backend_sg.id]
-  }
-
-  egress {
-    from_port = 80 
-    to_port = 80 
-    protocol = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
-    from_port = 443
-    to_port = 443 
-    protocol = "tcp"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+}
+
+resource "aws_security_group_rule" "frontend_to_backend" {
+  type                     = "egress"
+  from_port                = 8000
+  to_port                  = 8000
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.frontend_sg.id
+  source_security_group_id = aws_security_group.backend_sg.id
+
+  depends_on = [aws_security_group.backend_sg]
+}
+
+resource "aws_security_group_rule" "backend_from_frontend" {
+  type                     = "ingress"
+  from_port                = 8000
+  to_port                  = 8000
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.backend_sg.id
+  source_security_group_id = aws_security_group.frontend_sg.id
+
+  depends_on = [aws_security_group.frontend_sg]
 }
