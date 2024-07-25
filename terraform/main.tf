@@ -46,24 +46,6 @@ resource "aws_route_table_association" "public_b" {
   route_table_id = aws_route_table.public.id
 }
 
-resource "aws_security_group" "backend_sg" {
-  vpc_id = aws_vpc.main.id
-
-  ingress {
-    from_port   = 8000
-    to_port     = 8000
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-}
-
 resource "aws_security_group" "alb_sg" {
   vpc_id = aws_vpc.main.id
 
@@ -89,53 +71,22 @@ resource "aws_security_group" "alb_sg" {
   }
 }
 
-resource "aws_security_group" "frontend_sg" {
+resource "aws_security_group" "ecs_sg" {
   vpc_id = aws_vpc.main.id
 
   ingress {
-    from_port   = 3000
-    to_port     = 3000
+    from_port   = 0
+    to_port     = 65535
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
     from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    to_port     = 65535
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-}
-
-resource "aws_security_group_rule" "alb_to_frontend" {
-  type                     = "ingress"
-  from_port                = 3000
-  to_port                  = 3000
-  protocol                 = "tcp"
-  security_group_id        = aws_security_group.frontend_sg.id
-  source_security_group_id = aws_security_group.alb_sg.id
-}
-
-resource "aws_security_group_rule" "frontend_to_backend" {
-  type                     = "egress"
-  from_port                = 8000
-  to_port                  = 8000
-  protocol                 = "tcp"
-  security_group_id        = aws_security_group.frontend_sg.id
-  source_security_group_id = aws_security_group.backend_sg.id
-
-  depends_on = [aws_security_group.backend_sg]
-}
-
-resource "aws_security_group_rule" "backend_from_frontend" {
-  type                     = "ingress"
-  from_port                = 8000
-  to_port                  = 8000
-  protocol                 = "tcp"
-  security_group_id        = aws_security_group.backend_sg.id
-  source_security_group_id = aws_security_group.frontend_sg.id
-
-  depends_on = [aws_security_group.frontend_sg]
 }
 
 resource "aws_alb" "main" {
@@ -151,6 +102,23 @@ resource "aws_alb" "main" {
 resource "aws_alb_target_group" "frontend" {
   name        = "frontend-targets"
   port        = 3000
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
+
+  health_check {
+    path                = "/"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+    matcher             = "200-299"
+  }
+}
+
+resource "aws_alb_target_group" "backend" {
+  name        = "backend-targets"
+  port        = 8000
   protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
   target_type = "ip"
@@ -216,10 +184,10 @@ resource "aws_ecs_cluster" "QRCode-Cluster" {
 
 resource "aws_ecs_task_definition" "frontend" {
   family                   = "frontend-task"
-  network_mode             = "awsvpc"
-  requires_compatibilities = ["FARGATE"]
-  cpu                      = "512"  # Increased CPU
-  memory                   = "1024" # Increased memory
+  network_mode             = "bridge"
+  requires_compatibilities = ["EC2"]
+  cpu                      = "256"
+  memory                   = "512"
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
 
   container_definitions = jsonencode([
@@ -248,10 +216,10 @@ resource "aws_ecs_task_definition" "frontend" {
 
 resource "aws_ecs_task_definition" "backend" {
   family                   = "backend-task"
-  network_mode             = "awsvpc"
-  requires_compatibilities = ["FARGATE"]
-  cpu                      = "512"  # Increased CPU
-  memory                   = "1024" # Increased memory
+  network_mode             = "bridge"
+  requires_compatibilities = ["EC2"]
+  cpu                      = "256"
+  memory                   = "512"
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
 
   container_definitions = jsonencode([
@@ -283,11 +251,11 @@ resource "aws_ecs_service" "frontend" {
   cluster         = aws_ecs_cluster.QRCode-Cluster.id
   task_definition = aws_ecs_task_definition.frontend.arn
   desired_count   = 1
-  launch_type     = "FARGATE"
+  launch_type     = "EC2"
 
   network_configuration {
     subnets         = [aws_subnet.public_a.id, aws_subnet.public_b.id]
-    security_groups = [aws_security_group.frontend_sg.id]
+    security_groups = [aws_security_group.ecs_sg.id]
   }
 
   load_balancer {
@@ -304,11 +272,17 @@ resource "aws_ecs_service" "backend" {
   cluster         = aws_ecs_cluster.QRCode-Cluster.id
   task_definition = aws_ecs_task_definition.backend.arn
   desired_count   = 1
-  launch_type     = "FARGATE"
+  launch_type     = "EC2"
 
   network_configuration {
     subnets         = [aws_subnet.public_a.id, aws_subnet.public_b.id]
-    security_groups = [aws_security_group.backend_sg.id]
+    security_groups = [aws_security_group.ecs_sg.id]
+  }
+
+  load_balancer {
+    target_group_arn = aws_alb_target_group.backend.arn
+    container_name   = "backend"
+    container_port   = 8000
   }
 
   depends_on = [aws_ecs_task_definition.backend]
