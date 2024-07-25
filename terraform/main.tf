@@ -310,6 +310,8 @@ resource "aws_ecs_service" "backend" {
     subnets         = [aws_subnet.public_a.id, aws_subnet.public_b.id]
     security_groups = [aws_security_group.backend_sg.id]
   }
+
+  depends_on = [aws_ecs_task_definition.backend]
 }
 
 output "alb_dns_name" {
