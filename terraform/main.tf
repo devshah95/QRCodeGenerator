@@ -182,6 +182,12 @@ resource "aws_ecs_task_definition" "qr_code_task" {
           "awslogs-stream-prefix" = "ecs"
         }
       }
+      environment = [
+        {
+          name  = "REACT_APP_BACKEND_URL"
+          value = "http://localhost:8000"
+        }
+      ]
     },
     {
       name      = "backend"
