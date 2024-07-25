@@ -53,7 +53,7 @@ resource "aws_security_group" "backend_sg" {
     from_port   = 8000
     to_port     = 8000
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]  # Temporarily allow from anywhere
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
@@ -85,7 +85,7 @@ resource "aws_security_group" "alb_sg" {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]  # Allow traffic to all necessary ports
+    cidr_blocks = ["0.0.0.0/0"]
   }
 }
 
@@ -96,7 +96,7 @@ resource "aws_security_group" "frontend_sg" {
     from_port   = 3000
     to_port     = 3000
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]  # Temporarily allow from anywhere
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
@@ -144,6 +144,8 @@ resource "aws_alb" "main" {
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb_sg.id]
   subnets            = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+
+  depends_on = [aws_internet_gateway.gw]
 }
 
 resource "aws_alb_target_group" "frontend" {
@@ -152,6 +154,15 @@ resource "aws_alb_target_group" "frontend" {
   protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
   target_type = "ip"
+
+  health_check {
+    path                = "/"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+    matcher             = "200-299"
+  }
 }
 
 resource "aws_alb_listener" "frontend" {
@@ -163,6 +174,8 @@ resource "aws_alb_listener" "frontend" {
     type             = "forward"
     target_group_arn = aws_alb_target_group.frontend.arn
   }
+
+  depends_on = [aws_alb.main]
 }
 
 resource "aws_iam_role" "ecs_task_execution_role" {
@@ -187,6 +200,16 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+resource "aws_cloudwatch_log_group" "frontend" {
+  name = "/ecs/frontend"
+  retention_in_days = 7
+}
+
+resource "aws_cloudwatch_log_group" "backend" {
+  name = "/ecs/backend"
+  retention_in_days = 7
+}
+
 
 resource "aws_ecs_cluster" "QRCode-Cluster" {
   name = "QRCode-Cluster"
@@ -208,8 +231,18 @@ resource "aws_ecs_task_definition" "frontend" {
       portMappings = [
         {
           containerPort = 3000
+          hostPort      = 3000
+          protocol      = "tcp"
         }
       ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = "/ecs/frontend"
+          "awslogs-region"        = var.region
+          "awslogs-stream-prefix" = "ecs"
+        }
+      }
     }
   ])
 }
@@ -230,8 +263,18 @@ resource "aws_ecs_task_definition" "backend" {
       portMappings = [
         {
           containerPort = 8000
+          hostPort      = 8000
+          protocol      = "tcp"
         }
       ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = "/ecs/backend"
+          "awslogs-region"        = var.region
+          "awslogs-stream-prefix" = "ecs"
+        }
+      }
     }
   ])
 }
@@ -241,10 +284,10 @@ resource "aws_ecs_service" "frontend" {
   cluster         = aws_ecs_cluster.QRCode-Cluster.id
   task_definition = aws_ecs_task_definition.frontend.arn
   desired_count   = 1
-  launch_type     = "FARGATE"  # Ensure launch type is FARGATE
+  launch_type     = "FARGATE"
 
   network_configuration {
-    subnets = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+    subnets         = [aws_subnet.public_a.id, aws_subnet.public_b.id]
     security_groups = [aws_security_group.frontend_sg.id]
   }
 
@@ -253,6 +296,8 @@ resource "aws_ecs_service" "frontend" {
     container_name   = "frontend"
     container_port   = 3000
   }
+
+  depends_on = [aws_alb_listener.frontend]
 }
 
 resource "aws_ecs_service" "backend" {
@@ -260,7 +305,7 @@ resource "aws_ecs_service" "backend" {
   cluster         = aws_ecs_cluster.QRCode-Cluster.id
   task_definition = aws_ecs_task_definition.backend.arn
   desired_count   = 1
-  launch_type     = "FARGATE"  # Ensure launch type is FARGATE
+  launch_type     = "FARGATE"
 
   network_configuration {
     subnets         = [aws_subnet.public_a.id, aws_subnet.public_b.id]
