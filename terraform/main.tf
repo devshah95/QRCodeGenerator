@@ -156,12 +156,12 @@ resource "aws_ecs_cluster" "QRCode-Cluster" {
   name = "QRCode-Cluster"
 }
 
-resource "aws_ecs_task_definition" "frontend" {
-  family                   = "frontend-task"
+resource "aws_ecs_task_definition" "qr_code_task" {
+  family                   = "qr-code-task"
   network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                      = "256"
-  memory                   = "512"
+  cpu                      = "512"
+  memory                   = "1024"
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
 
   container_definitions = jsonencode([
@@ -182,19 +182,7 @@ resource "aws_ecs_task_definition" "frontend" {
           "awslogs-stream-prefix" = "ecs"
         }
       }
-    }
-  ])
-}
-
-resource "aws_ecs_task_definition" "backend" {
-  family                   = "backend-task"
-  network_mode             = "awsvpc"
-  requires_compatibilities = ["FARGATE"]
-  cpu                      = "256"
-  memory                   = "512"
-  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
-
-  container_definitions = jsonencode([
+    },
     {
       name      = "backend"
       image     = "devshah95/aws-infrastructure-project-backend:latest"
@@ -216,10 +204,10 @@ resource "aws_ecs_task_definition" "backend" {
   ])
 }
 
-resource "aws_ecs_service" "frontend" {
-  name            = "frontend-service"
+resource "aws_ecs_service" "qr_code_service" {
+  name            = "qr-code-service"
   cluster         = aws_ecs_cluster.QRCode-Cluster.id
-  task_definition = aws_ecs_task_definition.frontend.arn
+  task_definition = aws_ecs_task_definition.qr_code_task.arn
   desired_count   = 1
   launch_type     = "FARGATE"
 
@@ -236,20 +224,6 @@ resource "aws_ecs_service" "frontend" {
   }
 
   depends_on = [aws_alb_listener.frontend]
-}
-
-resource "aws_ecs_service" "backend" {
-  name            = "backend-service"
-  cluster         = aws_ecs_cluster.QRCode-Cluster.id
-  task_definition = aws_ecs_task_definition.backend.arn
-  desired_count   = 1
-  launch_type     = "FARGATE"
-
-  network_configuration {
-    subnets         = [aws_subnet.public_a.id, aws_subnet.public_b.id]
-    security_groups = [aws_security_group.ecs_sg.id]
-    assign_public_ip = true
-  }
 }
 
 output "alb_dns_name" {
