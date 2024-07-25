@@ -226,6 +226,7 @@ resource "aws_ecs_service" "frontend" {
   network_configuration {
     subnets         = [aws_subnet.public_a.id, aws_subnet.public_b.id]
     security_groups = [aws_security_group.ecs_sg.id]
+    assign_public_ip = true
   }
 
   load_balancer {
@@ -247,6 +248,7 @@ resource "aws_ecs_service" "backend" {
   network_configuration {
     subnets         = [aws_subnet.public_a.id, aws_subnet.public_b.id]
     security_groups = [aws_security_group.ecs_sg.id]
+    assign_public_ip = true
   }
 }
 
