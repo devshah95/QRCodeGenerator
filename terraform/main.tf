@@ -104,16 +104,7 @@ resource "aws_alb_target_group" "frontend" {
   port        = 3000
   protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
-  target_type = "instance"
-
-  health_check {
-    path                = "/"
-    interval            = 30
-    timeout             = 5
-    healthy_threshold   = 2
-    unhealthy_threshold = 2
-    matcher             = "200-299"
-  }
+  target_type = "ip"
 }
 
 resource "aws_alb_listener" "frontend" {
@@ -165,65 +156,10 @@ resource "aws_ecs_cluster" "QRCode-Cluster" {
   name = "QRCode-Cluster"
 }
 
-resource "aws_launch_configuration" "ecs" {
-  name          = "ecs-launch-configuration"
-  image_id      = "ami-0d5eff06f840b45e9" # Amazon ECS-optimized AMI
-  instance_type = "t2.micro"
-  iam_instance_profile = aws_iam_instance_profile.ecs_instance_profile.name
-  security_groups = [aws_security_group.ecs_sg.id]
-
-  lifecycle {
-    create_before_destroy = true
-  }
-
-  user_data = <<EOF
-#!/bin/bash
-echo ECS_CLUSTER=${aws_ecs_cluster.QRCode-Cluster.name} >> /etc/ecs/ecs.config
-yum install -y ecs-init
-service docker start
-start ecs
-EOF
-}
-
-resource "aws_autoscaling_group" "ecs" {
-  desired_capacity     = 2  # Ensure at least one instance per AZ
-  max_size             = 2
-  min_size             = 2
-  vpc_zone_identifier  = [aws_subnet.public_a.id, aws_subnet.public_b.id]
-  launch_configuration = aws_launch_configuration.ecs.id
-}
-
-resource "aws_iam_instance_profile" "ecs_instance_profile" {
-  name = "ecsInstanceProfile"
-  role = aws_iam_role.ecs_instance_role.name
-}
-
-resource "aws_iam_role" "ecs_instance_role" {
-  name = "ecsInstanceRole"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        },
-        Action = "sts:AssumeRole"
-      }
-    ]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "ecs_instance_role_policy" {
-  role       = aws_iam_role.ecs_instance_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
-}
-
 resource "aws_ecs_task_definition" "frontend" {
   family                   = "frontend-task"
-  network_mode             = "bridge"
-  requires_compatibilities = ["EC2"]
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
   cpu                      = "256"
   memory                   = "512"
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
@@ -248,14 +184,12 @@ resource "aws_ecs_task_definition" "frontend" {
       }
     }
   ])
-
-  depends_on = [aws_cloudwatch_log_group.frontend]
 }
 
 resource "aws_ecs_task_definition" "backend" {
   family                   = "backend-task"
-  network_mode             = "bridge"
-  requires_compatibilities = ["EC2"]
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
   cpu                      = "256"
   memory                   = "512"
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
@@ -280,8 +214,6 @@ resource "aws_ecs_task_definition" "backend" {
       }
     }
   ])
-
-  depends_on = [aws_cloudwatch_log_group.backend]
 }
 
 resource "aws_ecs_service" "frontend" {
@@ -289,7 +221,12 @@ resource "aws_ecs_service" "frontend" {
   cluster         = aws_ecs_cluster.QRCode-Cluster.id
   task_definition = aws_ecs_task_definition.frontend.arn
   desired_count   = 1
-  launch_type     = "EC2"
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets         = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+    security_groups = [aws_security_group.ecs_sg.id]
+  }
 
   load_balancer {
     target_group_arn = aws_alb_target_group.frontend.arn
@@ -305,9 +242,12 @@ resource "aws_ecs_service" "backend" {
   cluster         = aws_ecs_cluster.QRCode-Cluster.id
   task_definition = aws_ecs_task_definition.backend.arn
   desired_count   = 1
-  launch_type     = "EC2"
+  launch_type     = "FARGATE"
 
-  depends_on = [aws_ecs_task_definition.backend]
+  network_configuration {
+    subnets         = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+    security_groups = [aws_security_group.ecs_sg.id]
+  }
 }
 
 output "alb_dns_name" {
