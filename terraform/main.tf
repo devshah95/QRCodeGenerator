@@ -142,6 +142,16 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+resource "aws_cloudwatch_log_group" "frontend" {
+  name              = "/ecs/frontend"
+  retention_in_days = 7
+}
+
+resource "aws_cloudwatch_log_group" "backend" {
+  name              = "/ecs/backend"
+  retention_in_days = 7
+}
+
 resource "aws_ecs_cluster" "QRCode-Cluster" {
   name = "QRCode-Cluster"
 }
@@ -164,6 +174,14 @@ resource "aws_ecs_task_definition" "frontend" {
           containerPort = 3000
         }
       ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = "/ecs/frontend"
+          "awslogs-region"        = var.region
+          "awslogs-stream-prefix" = "ecs"
+        }
+      }
     }
   ])
 }
@@ -186,6 +204,14 @@ resource "aws_ecs_task_definition" "backend" {
           containerPort = 8000
         }
       ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = "/ecs/backend"
+          "awslogs-region"        = var.region
+          "awslogs-stream-prefix" = "ecs"
+        }
+      }
     }
   ])
 }
