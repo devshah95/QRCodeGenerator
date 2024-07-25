@@ -104,24 +104,7 @@ resource "aws_alb_target_group" "frontend" {
   port        = 3000
   protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
-  target_type = "ip"
-
-  health_check {
-    path                = "/"
-    interval            = 30
-    timeout             = 5
-    healthy_threshold   = 2
-    unhealthy_threshold = 2
-    matcher             = "200-299"
-  }
-}
-
-resource "aws_alb_target_group" "backend" {
-  name        = "backend-targets"
-  port        = 8000
-  protocol    = "HTTP"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
+  target_type = "instance"
 
   health_check {
     path                = "/"
@@ -277,12 +260,6 @@ resource "aws_ecs_service" "backend" {
   network_configuration {
     subnets         = [aws_subnet.public_a.id, aws_subnet.public_b.id]
     security_groups = [aws_security_group.ecs_sg.id]
-  }
-
-  load_balancer {
-    target_group_arn = aws_alb_target_group.backend.arn
-    container_name   = "backend"
-    container_port   = 8000
   }
 
   depends_on = [aws_ecs_task_definition.backend]
