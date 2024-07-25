@@ -7,7 +7,8 @@ function App() {
   const [qrCode, setQrCode] = useState(null)
 
   const generateQrCode = () => {
-    const backendUrl = "http://localhost:8000"
+    const backendUrl =
+      process.env.REACT_APP_BACKEND_URL || "http://localhost:8000"
     axios
       .post(
         `${backendUrl}/generate_qr/`,
