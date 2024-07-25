@@ -165,6 +165,64 @@ resource "aws_ecs_cluster" "QRCode-Cluster" {
   name = "QRCode-Cluster"
 }
 
+resource "aws_launch_configuration" "ecs" {
+  name          = "ecs-launch-configuration"
+  image_id      = "ami-0d5eff06f840b45e9" # Amazon ECS-optimized AMI
+  instance_type = "t2.micro"
+  iam_instance_profile = aws_iam_instance_profile.ecs_instance_profile.name
+  security_groups = [aws_security_group.ecs_sg.id]
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  user_data = <<EOF
+#!/bin/bash
+echo ECS_CLUSTER=${aws_ecs_cluster.QRCode-Cluster.name} >> /etc/ecs/ecs.config
+EOF
+}
+
+resource "aws_autoscaling_group" "ecs" {
+  desired_capacity     = 1
+  max_size             = 2
+  min_size             = 1
+  vpc_zone_identifier  = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+  launch_configuration = aws_launch_configuration.ecs.id
+
+  tag {
+    key                 = "Name"
+    value               = "ECS Instance"
+    propagate_at_launch = true
+  }
+}
+
+resource "aws_iam_instance_profile" "ecs_instance_profile" {
+  name = "ecsInstanceProfile"
+  role = aws_iam_role.ecs_instance_role.name
+}
+
+resource "aws_iam_role" "ecs_instance_role" {
+  name = "ecsInstanceRole"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        },
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_instance_role_policy" {
+  role       = aws_iam_role.ecs_instance_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+}
+
 resource "aws_ecs_task_definition" "frontend" {
   family                   = "frontend-task"
   network_mode             = "bridge"
