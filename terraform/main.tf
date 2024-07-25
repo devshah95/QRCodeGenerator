@@ -166,9 +166,38 @@ resource "aws_iam_role" "ecs_task_role" {
   })
 }
 
+resource "aws_iam_policy" "ecs_task_execute_command_policy" {
+  name = "ecsTaskExecuteCommandPolicy"
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "ssm:StartSession",
+          "ecs:ExecuteCommand",
+          "ssm:GetConnectionStatus"
+        ],
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 resource "aws_iam_role_policy_attachment" "ecs_task_role_policy" {
   role       = aws_iam_role.ecs_task_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+  policy_arn = aws_iam_policy.ecs_task_execute_command_policy.arn
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy_execute_command" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = aws_iam_policy.ecs_task_execute_command_policy.arn
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_task_role_policy_execute_command" {
+  role       = aws_iam_role.ecs_task_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
 resource "aws_cloudwatch_log_group" "frontend" {
@@ -207,7 +236,7 @@ resource "aws_ecs_task_definition" "qr_code_task" {
       environment = [
         {
           name  = "REACT_APP_BACKEND_URL"
-          value = "http://backend:8000"
+          value = "http://localhost:8000"
         }
       ]
       logConfiguration = {
@@ -241,11 +270,11 @@ resource "aws_ecs_task_definition" "qr_code_task" {
 }
 
 resource "aws_ecs_service" "qr_code_service" {
-  name            = "qr-code-service"
-  cluster         = aws_ecs_cluster.QRCode-Cluster.id
-  task_definition = aws_ecs_task_definition.qr_code_task.arn
-  desired_count   = 1
-  launch_type     = "FARGATE"
+  name                   = "qr-code-service"
+  cluster                = aws_ecs_cluster.QRCode-Cluster.id
+  task_definition        = aws_ecs_task_definition.qr_code_task.arn
+  desired_count          = 1
+  launch_type            = "FARGATE"
   enable_execute_command = true
 
   network_configuration {
