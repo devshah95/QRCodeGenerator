@@ -179,6 +179,9 @@ resource "aws_launch_configuration" "ecs" {
   user_data = <<EOF
 #!/bin/bash
 echo ECS_CLUSTER=${aws_ecs_cluster.QRCode-Cluster.name} >> /etc/ecs/ecs.config
+yum install -y ecs-init
+service docker start
+start ecs
 EOF
 }
 
@@ -188,12 +191,6 @@ resource "aws_autoscaling_group" "ecs" {
   min_size             = 2
   vpc_zone_identifier  = [aws_subnet.public_a.id, aws_subnet.public_b.id]
   launch_configuration = aws_launch_configuration.ecs.id
-
-  tag {
-    key                 = "Name"
-    value               = "ECS Instance"
-    propagate_at_launch = true
-  }
 }
 
 resource "aws_iam_instance_profile" "ecs_instance_profile" {
