@@ -151,7 +151,9 @@ resource "aws_alb_target_group" "frontend" {
   port     = 3000
   protocol = "HTTP"
   vpc_id   = aws_vpc.main.id
+  target_type = "ip"
 }
+
 
 resource "aws_alb_listener" "frontend" {
   load_balancer_arn = aws_alb.main.arn
@@ -219,7 +221,6 @@ resource "aws_ecs_service" "frontend" {
   cluster         = aws_ecs_cluster.QRCode-Cluster.id
   task_definition = aws_ecs_task_definition.frontend.arn
   desired_count   = 1
-  iam_role        = var.role
 
   network_configuration {
     subnets = [aws_subnet.public_a.id, aws_subnet.public_b.id]
@@ -227,7 +228,7 @@ resource "aws_ecs_service" "frontend" {
   }
 
   load_balancer {
-    target_group_arn = aws_lb_target_group.frontend.arn
+    target_group_arn = aws_alb_target_group.frontend.arn
     container_name   = "frontend"
     container_port   = 3000
   }
