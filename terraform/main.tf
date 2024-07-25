@@ -201,15 +201,14 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
 }
 
 resource "aws_cloudwatch_log_group" "frontend" {
-  name = "/ecs/frontend"
+  name              = "/ecs/frontend"
   retention_in_days = 7
 }
 
 resource "aws_cloudwatch_log_group" "backend" {
-  name = "/ecs/backend"
+  name              = "/ecs/backend"
   retention_in_days = 7
 }
-
 
 resource "aws_ecs_cluster" "QRCode-Cluster" {
   name = "QRCode-Cluster"
@@ -231,8 +230,6 @@ resource "aws_ecs_task_definition" "frontend" {
       portMappings = [
         {
           containerPort = 3000
-          hostPort      = 3000
-          protocol      = "tcp"
         }
       ]
       logConfiguration = {
@@ -245,6 +242,8 @@ resource "aws_ecs_task_definition" "frontend" {
       }
     }
   ])
+
+  depends_on = [aws_cloudwatch_log_group.frontend]
 }
 
 resource "aws_ecs_task_definition" "backend" {
@@ -263,8 +262,6 @@ resource "aws_ecs_task_definition" "backend" {
       portMappings = [
         {
           containerPort = 8000
-          hostPort      = 8000
-          protocol      = "tcp"
         }
       ]
       logConfiguration = {
@@ -277,6 +274,8 @@ resource "aws_ecs_task_definition" "backend" {
       }
     }
   ])
+
+  depends_on = [aws_cloudwatch_log_group.backend]
 }
 
 resource "aws_ecs_service" "frontend" {
