@@ -183,9 +183,9 @@ EOF
 }
 
 resource "aws_autoscaling_group" "ecs" {
-  desired_capacity     = 1
+  desired_capacity     = 2  # Ensure at least one instance per AZ
   max_size             = 2
-  min_size             = 1
+  min_size             = 2
   vpc_zone_identifier  = [aws_subnet.public_a.id, aws_subnet.public_b.id]
   launch_configuration = aws_launch_configuration.ecs.id
 
