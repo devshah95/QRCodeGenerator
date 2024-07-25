@@ -163,3 +163,89 @@ resource "aws_alb_listener" "frontend" {
     target_group_arn = aws_alb_target_group.frontend.arn
   }
 }
+
+resource "aws_ecs_cluster" "QRCode-Cluster" {
+  name = "QRCode-Cluster"
+}
+
+resource "aws_ecs_task_definition" "frontend" {
+  family = "frontend-task"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = "256"
+  memory                   = "512"
+  execution_role_arn       = var.role
+
+  container_definitions = jsonencode([
+    {
+      name      = "frontend"
+      image     = "devshah95/aws-infrastructure-project-frontend:latest"
+      essential = true
+      portMappings = [
+        {
+          containerPort = 3000
+          hostPort      = 3000
+        }
+      ]
+    }
+  ])
+}
+
+resource "aws_ecs_task_definition" "backend" {
+  family                   = "backend-task"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = "256"
+  memory                   = "512"
+  execution_role_arn       = var.role
+
+  container_definitions = jsonencode([
+    {
+      name      = "backend"
+      image     = "devshah95/aws-infrastructure-project-backend:latest"
+      essential = true
+      portMappings = [
+        {
+          containerPort = 8000
+          hostPort      = 8000
+        }
+      ]
+    }
+  ])
+}
+
+resource "aws_ecs_service" "frontend" {
+  name            = "frontend-service"
+  cluster         = aws_ecs_cluster.QRCode-Cluster.id
+  task_definition = aws_ecs_task_definition.frontend.arn
+  desired_count   = 1
+  iam_role        = var.role
+
+  network_configuration {
+    subnets = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+    security_groups = [aws_security_group.frontend_sg.id]
+  }
+
+  load_balancer {
+    target_group_arn = aws_lb_target_group.frontend.arn
+    container_name   = "frontend"
+    container_port   = 3000
+  }
+}
+
+resource "aws_ecs_service" "backend" {
+  name            = "backend-service"
+  cluster         = aws_ecs_cluster.QRCode-Cluster.id
+  task_definition = aws_ecs_task_definition.backend.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets         = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+    security_groups = [aws_security_group.backend_sg.id]
+  }
+}
+
+output "alb_dns_name" {
+  value = aws_alb.main.dns_name
+}
