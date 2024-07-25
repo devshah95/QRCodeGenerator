@@ -82,10 +82,10 @@ resource "aws_security_group" "ecs_sg" {
   }
 
   ingress {
-    from_port        = 0
-    to_port          = 65535
-    protocol         = "tcp"
-    security_groups  = [aws_security_group.ecs_sg.id]
+    from_port   = 0
+    to_port     = 65535
+    protocol    = "tcp"
+    self        = true
   }
 
   egress {
@@ -149,6 +149,28 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+resource "aws_iam_role" "ecs_task_role" {
+  name = "ecsTaskRole"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        },
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_task_role_policy" {
+  role       = aws_iam_role.ecs_task_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
 resource "aws_cloudwatch_log_group" "frontend" {
   name              = "/ecs/frontend"
   retention_in_days = 7
@@ -170,6 +192,7 @@ resource "aws_ecs_task_definition" "qr_code_task" {
   cpu                      = "512"
   memory                   = "1024"
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_role.arn
 
   container_definitions = jsonencode([
     {
@@ -223,7 +246,6 @@ resource "aws_ecs_service" "qr_code_service" {
   task_definition = aws_ecs_task_definition.qr_code_task.arn
   desired_count   = 1
   launch_type     = "FARGATE"
-
   enable_execute_command = true
 
   network_configuration {
