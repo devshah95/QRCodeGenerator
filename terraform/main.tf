@@ -236,11 +236,6 @@ resource "aws_ecs_service" "frontend" {
   desired_count   = 1
   launch_type     = "EC2"
 
-  network_configuration {
-    subnets         = [aws_subnet.public_a.id, aws_subnet.public_b.id]
-    security_groups = [aws_security_group.ecs_sg.id]
-  }
-
   load_balancer {
     target_group_arn = aws_alb_target_group.frontend.arn
     container_name   = "frontend"
@@ -256,11 +251,6 @@ resource "aws_ecs_service" "backend" {
   task_definition = aws_ecs_task_definition.backend.arn
   desired_count   = 1
   launch_type     = "EC2"
-
-  network_configuration {
-    subnets         = [aws_subnet.public_a.id, aws_subnet.public_b.id]
-    security_groups = [aws_security_group.ecs_sg.id]
-  }
 
   depends_on = [aws_ecs_task_definition.backend]
 }
