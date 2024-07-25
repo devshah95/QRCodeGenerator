@@ -82,10 +82,10 @@ resource "aws_security_group" "alb_sg" {
   }
 
   egress {
-    from_port   = 3000
-    to_port     = 3000
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]  # Allow traffic to the frontend instances on port 3000
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]  # Allow traffic to all necessary ports
   }
 }
 
@@ -147,13 +147,12 @@ resource "aws_alb" "main" {
 }
 
 resource "aws_alb_target_group" "frontend" {
-  name     = "frontend-targets"
-  port     = 3000
-  protocol = "HTTP"
-  vpc_id   = aws_vpc.main.id
+  name        = "frontend-targets"
+  port        = 3000
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
   target_type = "ip"
 }
-
 
 resource "aws_alb_listener" "frontend" {
   load_balancer_arn = aws_alb.main.arn
@@ -186,7 +185,6 @@ resource "aws_ecs_task_definition" "frontend" {
       portMappings = [
         {
           containerPort = 3000
-          hostPort      = 3000
         }
       ]
     }
@@ -209,7 +207,6 @@ resource "aws_ecs_task_definition" "backend" {
       portMappings = [
         {
           containerPort = 8000
-          hostPort      = 8000
         }
       ]
     }
@@ -221,7 +218,7 @@ resource "aws_ecs_service" "frontend" {
   cluster         = aws_ecs_cluster.QRCode-Cluster.id
   task_definition = aws_ecs_task_definition.frontend.arn
   desired_count   = 1
-  launch_type     = "FARGATE"  
+  launch_type     = "FARGATE"  # Ensure launch type is FARGATE
 
   network_configuration {
     subnets = [aws_subnet.public_a.id, aws_subnet.public_b.id]
@@ -240,14 +237,13 @@ resource "aws_ecs_service" "backend" {
   cluster         = aws_ecs_cluster.QRCode-Cluster.id
   task_definition = aws_ecs_task_definition.backend.arn
   desired_count   = 1
-  launch_type     = "FARGATE"  
+  launch_type     = "FARGATE"  # Ensure launch type is FARGATE
 
   network_configuration {
     subnets         = [aws_subnet.public_a.id, aws_subnet.public_b.id]
     security_groups = [aws_security_group.backend_sg.id]
   }
 }
-
 
 output "alb_dns_name" {
   value = aws_alb.main.dns_name
