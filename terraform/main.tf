@@ -114,6 +114,14 @@ resource "aws_alb_target_group" "frontend" {
   target_type = "ip"
 }
 
+resource "aws_alb_target_group" "backend" {
+  name        = "backend-targets"
+  port        = 8000
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
+}
+
 resource "aws_alb_listener" "frontend" {
   load_balancer_arn = aws_alb.main.arn
   port              = 80
@@ -125,14 +133,6 @@ resource "aws_alb_listener" "frontend" {
   }
 
   depends_on = [aws_alb.main]
-}
-
-resource "aws_alb_target_group" "backend" {
-  name        = "backend-targets"
-  port        = 8000
-  protocol    = "HTTP"
-  vpc_id      = aws_vpc.main.id
-  target_type = "ip"
 }
 
 resource "aws_alb_listener_rule" "backend" {
@@ -238,15 +238,7 @@ resource "aws_ecs_cluster" "QRCode-Cluster" {
   name = "QRCode-Cluster"
 }
 
-resource "aws_ecs_task_definition" "qr_code_task" {
-  family                   = "qr-code-task"
-  network_mode             = "awsvpc"
-  requires_compatibilities = ["FARGATE"]
-  cpu                      = "512"
-  memory                   = "1024"
-  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
-  task_role_arn            = aws_iam_role.ecs_task_role.arn
-
+locals {
   container_definitions = jsonencode([
     {
       name      = "frontend"
@@ -260,9 +252,17 @@ resource "aws_ecs_task_definition" "qr_code_task" {
       environment = [
         {
           name  = "REACT_APP_BACKEND_URL"
-          value = "http://${aws_alb.main.dns_name}:8000"
+          value = "http://${aws_alb.main.dns_name}"
         }
       ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = "/ecs/frontend"
+          "awslogs-region"        = var.region
+          "awslogs-stream-prefix" = "ecs"
+        }
+      }
     },
     {
       name      = "backend"
@@ -283,6 +283,18 @@ resource "aws_ecs_task_definition" "qr_code_task" {
       }
     }
   ])
+}
+
+resource "aws_ecs_task_definition" "qr_code_task" {
+  family                   = "qr-code-task"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = "512"
+  memory                   = "1024"
+  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_role.arn
+
+  container_definitions = local.container_definitions
 }
 
 resource "aws_ecs_service" "qr_code_service" {
