@@ -319,7 +319,10 @@ resource "aws_ecs_service" "qr_code_service" {
     container_port   = 8000
   }
 
-  depends_on = [aws_alb_listener.frontend]
+  depends_on = [
+    aws_alb_listener.frontend,
+    aws_ecs_task_definition.qr_code_task
+  ]
 }
 
 output "alb_dns_name" {
