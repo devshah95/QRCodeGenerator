@@ -6,10 +6,13 @@ function App() {
   const [input, setInput] = useState("")
   const [qrCode, setQrCode] = useState(null)
 
+  const backendUrl =
+    process.env.REACT_APP_BACKEND_URL || "http://localhost:8000"
+
   const generateQrCode = () => {
     axios
       .post(
-        "http://localhost:8000/generate_qr/",
+        `${backendUrl}/generate_qr/`,
         { data: input },
         { responseType: "blob" }
       )

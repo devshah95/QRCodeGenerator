@@ -127,6 +127,30 @@ resource "aws_alb_listener" "frontend" {
   depends_on = [aws_alb.main]
 }
 
+resource "aws_alb_target_group" "backend" {
+  name        = "backend-targets"
+  port        = 8000
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
+}
+
+resource "aws_alb_listener_rule" "backend" {
+  listener_arn = aws_alb_listener.frontend.arn
+  priority     = 100
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_alb_target_group.backend.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/generate_qr/*"]
+    }
+  }
+}
+
 resource "aws_iam_role" "ecs_task_execution_role" {
   name = "ecsTaskExecutionRole"
 
@@ -233,14 +257,12 @@ resource "aws_ecs_task_definition" "qr_code_task" {
           containerPort = 3000
         }
       ]
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          "awslogs-group"         = "/ecs/frontend"
-          "awslogs-region"        = var.region
-          "awslogs-stream-prefix" = "ecs"
+      environment = [
+        {
+          name  = "REACT_APP_BACKEND_URL"
+          value = "http://${aws_alb.main.dns_name}:8000"
         }
-      }
+      ]
     },
     {
       name      = "backend"
@@ -281,6 +303,12 @@ resource "aws_ecs_service" "qr_code_service" {
     target_group_arn = aws_alb_target_group.frontend.arn
     container_name   = "frontend"
     container_port   = 3000
+  }
+
+  load_balancer {
+    target_group_arn = aws_alb_target_group.backend.arn
+    container_name   = "backend"
+    container_port   = 8000
   }
 
   depends_on = [aws_alb_listener.frontend]
