@@ -255,7 +255,6 @@ resource "aws_ecs_task_definition" "qr_code_task" {
       portMappings = [
         {
           containerPort = 3000
-          hostPort      = 3000
           protocol      = "tcp"
         }
       ]
@@ -281,7 +280,6 @@ resource "aws_ecs_task_definition" "qr_code_task" {
       portMappings = [
         {
           containerPort = 8000
-          hostPort      = 8000
           protocol      = "tcp"
         }
       ]
@@ -295,10 +293,6 @@ resource "aws_ecs_task_definition" "qr_code_task" {
       }
     }
   ])
-
-  lifecycle {
-    create_before_destroy = true
-  }
 }
 
 resource "aws_ecs_service" "qr_code_service" {
