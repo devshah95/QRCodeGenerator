@@ -1,0 +1,20 @@
+name: Deploy QRCode Application
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "frontend/**"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
