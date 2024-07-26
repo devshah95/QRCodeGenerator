@@ -19,3 +19,8 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::533267042663:role/TerraformAdmin
           aws-region: ${{ vars.REGION }}
+
+      - name: Deploy with Terraform
+        run: |
+          terraform init
+          terraform apply -var-file="variables.tfvars" --auto-approve
