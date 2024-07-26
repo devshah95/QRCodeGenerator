@@ -255,6 +255,8 @@ resource "aws_ecs_task_definition" "qr_code_task" {
       portMappings = [
         {
           containerPort = 3000
+          hostPort      = 3000
+          protocol      = "tcp"
         }
       ]
       environment = [
@@ -266,7 +268,7 @@ resource "aws_ecs_task_definition" "qr_code_task" {
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          "awslogs-group"         = "/ecs/frontend"
+          "awslogs-group"         = aws_cloudwatch_log_group.frontend.name
           "awslogs-region"        = var.region
           "awslogs-stream-prefix" = "ecs"
         }
@@ -279,18 +281,24 @@ resource "aws_ecs_task_definition" "qr_code_task" {
       portMappings = [
         {
           containerPort = 8000
+          hostPort      = 8000
+          protocol      = "tcp"
         }
       ]
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          "awslogs-group"         = "/ecs/backend"
+          "awslogs-group"         = aws_cloudwatch_log_group.backend.name
           "awslogs-region"        = var.region
           "awslogs-stream-prefix" = "ecs"
         }
       }
     }
   ])
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "aws_ecs_service" "qr_code_service" {
@@ -319,10 +327,7 @@ resource "aws_ecs_service" "qr_code_service" {
     container_port   = 8000
   }
 
-  depends_on = [
-    aws_alb_listener.frontend,
-    aws_ecs_task_definition.qr_code_task
-  ]
+  depends_on = [aws_alb_listener.frontend]
 }
 
 output "alb_dns_name" {
