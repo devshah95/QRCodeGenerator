@@ -13,3 +13,9 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::533267042663:role/TerraformAdmin
+          aws-region: ${{ vars.REGION }}
