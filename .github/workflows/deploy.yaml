@@ -18,7 +18,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::533267042663:role/TerraformAdmin
-          aws-region: ${{ vars.REGION }}
+          aws-region: us-east-1
 
       - name: Set up Terraform
         run: |
