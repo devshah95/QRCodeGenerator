@@ -238,7 +238,15 @@ resource "aws_ecs_cluster" "QRCode-Cluster" {
   name = "QRCode-Cluster"
 }
 
-locals {
+resource "aws_ecs_task_definition" "qr_code_task" {
+  family                   = "qr-code-task"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = "512"
+  memory                   = "1024"
+  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_role.arn
+
   container_definitions = jsonencode([
     {
       name      = "frontend"
@@ -285,18 +293,6 @@ locals {
   ])
 }
 
-resource "aws_ecs_task_definition" "qr_code_task" {
-  family                   = "qr-code-task"
-  network_mode             = "awsvpc"
-  requires_compatibilities = ["FARGATE"]
-  cpu                      = "512"
-  memory                   = "1024"
-  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
-  task_role_arn            = aws_iam_role.ecs_task_role.arn
-
-  container_definitions = local.container_definitions
-}
-
 resource "aws_ecs_service" "qr_code_service" {
   name                   = "qr-code-service"
   cluster                = aws_ecs_cluster.QRCode-Cluster.id
@@ -306,8 +302,8 @@ resource "aws_ecs_service" "qr_code_service" {
   enable_execute_command = true
 
   network_configuration {
-    subnets         = [aws_subnet.public_a.id, aws_subnet.public_b.id]
-    security_groups = [aws_security_group.ecs_sg.id]
+    subnets          = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+    security_groups  = [aws_security_group.ecs_sg.id]
     assign_public_ip = true
   }
 
