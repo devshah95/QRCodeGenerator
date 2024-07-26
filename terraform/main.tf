@@ -233,12 +233,6 @@ resource "aws_ecs_task_definition" "qr_code_task" {
           containerPort = 3000
         }
       ]
-      environment = [
-        {
-          name  = "REACT_APP_BACKEND_URL"
-          value = "http://${aws_alb.main.dns_name}:8000"
-        }
-      ]
       logConfiguration = {
         logDriver = "awslogs"
         options = {
