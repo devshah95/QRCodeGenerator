@@ -97,4 +97,4 @@ Challenges Addressed
 
 - Ensuring that the frontend can communicate with the backend within the ECS cluster.
 - Proper configuration of security groups to allow necessary communication between services.
-- Using environment variables to dynamically configure the frontend with the backend URL.
+- Misconfigurations in the GitHub Actions workflow lead to deployment failures.
