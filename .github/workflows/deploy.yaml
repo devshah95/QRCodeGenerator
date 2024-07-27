@@ -28,4 +28,4 @@ jobs:
       - name: Deploy with Terraform
         run: |
           cd terraform
-          terraform apply -var-file="variables.tfvars" --auto-approve
+          terraform destroy -var-file="variables.tfvars" --auto-approve
