@@ -1,6 +1,6 @@
 Overview
 The project involves deploying a QR code generator application using AWS ECS with Fargate, Terraform, Docker, and GitHub Actions. The application consists of a frontend built with React and a backend built with FastAPI. The deployment leverages AWS infrastructure, including VPCs, subnets, security groups, and an Application Load Balancer (ALB).
-Components
+
 Frontend
 
 - **Framework**: React
